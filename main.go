@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func FileNameList() []string {
@@ -35,6 +37,15 @@ func MkdirTextFile(path string) {
 		fmt.Println("TextFile 目录已存在, 不再创建")
 	}
 }
+func CmdPythonSaveImageDpi(filePath string) {
+	if _, err := exec.Command("python", []string{"run.py", filePath}...).Output(); err == nil {
+		fmt.Println("doc转换成功")
+	} else {
+		fmt.Println(err)
+	}
+	time.Sleep(1 * time.Second)
+}
+
 func switchFileName(delDocFile bool) bool {
 	if NameList := FileNameList(); NameList != nil || len(NameList) != 0 {
 		for index, file := range FileNameList() {
@@ -52,8 +63,10 @@ func switchFileName(delDocFile bool) bool {
 					fmt.Println("文件" + fileName + "处理失败")
 				}
 			case ".doc":
+				// 调用python脚本转换doc为docx
+				CmdPythonSaveImageDpi(fileName)
 				if docxContent := getDocxInformation(fileName); docxContent != "" {
-					saveFile(strings.Replace(fileName, ".doc", ".txt", -1), docxContent)
+					saveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
 					if delDocFile {
 						if err := os.Remove(fileName); err != nil {
 							log.Println(err)
