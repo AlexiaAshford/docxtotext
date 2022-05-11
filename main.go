@@ -11,47 +11,62 @@ import (
 	"strings"
 )
 
-func GetFileName() {
+func FileNameList() []string {
+	var files []string
 	if dir, err := os.Getwd(); err == nil {
-		var files []string
 		if ok := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			files = append(files, path)
 			return nil
-		}); ok != nil {
-			fmt.Println(ok)
-		}
-		for _, file := range files {
-			fileName := filepath.Base(file)
-			switch path.Ext(fileName) {
-			case ".doc" , ".docx":
-				saveFile(strings.Replace(fileName, path.Ext(fileName), ".txt", -1), makeDocx(fileName))
-			default:
-				fmt.Println(fileName, "不是docx文件，跳过处理！")
-
-			}
-
+		}); ok == nil {
+			return files
 		}
 	} else {
 		fmt.Println(err)
 	}
+	return nil
+}
+
+func MkdirTextFile(path string) {
+	if _, err := os.Stat(path); err != nil {
+		if err = os.Mkdir(path, 0777); err != nil {
+			log.Fatalf("error creating directory: %s", err)
+		}
+	} else {
+		fmt.Println("TextFile 目录已存在, 不再创建")
+	}
+}
+func switchFileName() bool {
+	if NameList := FileNameList(); NameList != nil || len(NameList) != 0 {
+		for index, file := range FileNameList() {
+			fileName := filepath.Base(file)
+			switch path.Ext(fileName) {
+			case ".docx":
+				saveFile(strings.Replace(fileName, ".docx", ".txt", -1), getDocxInformation(fileName))
+			case ".doc":
+				saveFile(strings.Replace(fileName, ".doc", ".txt", -1), getDocxInformation(fileName))
+			default:
+				fmt.Println("No:", index, fileName, "不是docx文件，跳过处理！")
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func saveFile(fileName, content string) {
 	content = strings.Replace(content, "\n　　\n", "\n", -1)
-	fmt.Println("TextFile/"+fileName)
 	if ok := ioutil.WriteFile("TextFile/"+fileName, []byte(content), 0644); ok != nil {
 		log.Fatalf("error writing file: %s", ok)
 	} else {
-		fmt.Println("文件" + fileName + "已保存")
+		fmt.Println("文件" + fileName + "处理完毕， 已保存在 TextFile 目录下")
 	}
 }
 
-func makeDocx(fileName string) string {
-	var content string
-	fmt.Println(fileName)
+func getDocxInformation(fileName string) string {
 	if doc, err := document.Open(fileName); err != nil {
 		log.Fatalf("error opening document: %s", err)
 	} else {
+		content := "　　"
 		//doc.Paragraphs() 得到包含文档所有的段落的切片
 		//run为每个段落相同格式的文字组成的片段
 		for _, para := range doc.Paragraphs() {
@@ -66,12 +81,8 @@ func makeDocx(fileName string) string {
 }
 
 func main() {
-	if _, err := os.Stat("./TextFile"); err != nil {
-		if err = os.Mkdir("./TextFile", 0777); err != nil {
-			log.Fatalf("error creating directory: %s", err)
-		}
-	} else {
-		fmt.Println("TextFile 目录已存在, 不再创建")
+	MkdirTextFile("./TextFile")
+	if !switchFileName() {
+		fmt.Println("文件列表获取失败或没有查找到doc docx 文档")
 	}
-	GetFileName()
 }
