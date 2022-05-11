@@ -54,7 +54,7 @@ func switchFileName() bool {
 }
 
 func saveFile(fileName, content string) {
-	content = strings.Replace(content, "\n　　\n", "\n", -1)
+	content = "　　" + strings.Replace(content, "\n　　\n", "\n", -1)
 	if ok := ioutil.WriteFile("TextFile/"+fileName, []byte(content), 0644); ok != nil {
 		log.Fatalf("error writing file: %s", ok)
 	} else {
@@ -63,26 +63,25 @@ func saveFile(fileName, content string) {
 }
 
 func getDocxInformation(fileName string) string {
-	if doc, err := document.Open(fileName); err != nil {
-		log.Fatalf("error opening document: %s", err)
-	} else {
-		content := "　　"
-		//doc.Paragraphs() 得到包含文档所有的段落的切片
-		//run为每个段落相同格式的文字组成的片段
+	var content string
+	//doc.Paragraphs() 得到包含文档所有的段落的切片
+	if doc, err := document.Open(fileName); err == nil {
 		for _, para := range doc.Paragraphs() {
+			//run为每个段落相同格式的文字组成的片段
 			for _, run := range para.Runs() {
 				content += run.Text()
 			}
 			content += "\n　　"
 		}
-		return content
+	} else {
+		log.Fatalf("error opening document: %s", err)
 	}
-	return ""
+	return content
 }
 
 func main() {
 	MkdirTextFile("./TextFile")
 	if !switchFileName() {
-		fmt.Println("文件列表获取失败或没有查找到doc docx 文档")
+		log.Println("文件列表获取失败或没有查找到doc docx 文档")
 	}
 }
