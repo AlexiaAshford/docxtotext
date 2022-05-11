@@ -35,15 +35,33 @@ func MkdirTextFile(path string) {
 		fmt.Println("TextFile 目录已存在, 不再创建")
 	}
 }
-func switchFileName() bool {
+func switchFileName(delDocFile bool) bool {
 	if NameList := FileNameList(); NameList != nil || len(NameList) != 0 {
 		for index, file := range FileNameList() {
 			fileName := filepath.Base(file)
 			switch path.Ext(fileName) {
 			case ".docx":
-				saveFile(strings.Replace(fileName, ".docx", ".txt", -1), getDocxInformation(fileName))
+				if docxContent := getDocxInformation(fileName); docxContent != "" {
+					saveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
+					if delDocFile {
+						if err := os.Remove(fileName); err != nil {
+							log.Println(err)
+						}
+					}
+				} else {
+					fmt.Println("文件" + fileName + "处理失败")
+				}
 			case ".doc":
-				saveFile(strings.Replace(fileName, ".doc", ".txt", -1), getDocxInformation(fileName))
+				if docxContent := getDocxInformation(fileName); docxContent != "" {
+					saveFile(strings.Replace(fileName, ".doc", ".txt", -1), docxContent)
+					if delDocFile {
+						if err := os.Remove(fileName); err != nil {
+							log.Println(err)
+						}
+					}
+				} else {
+					fmt.Println("文件" + fileName + "处理失败")
+				}
 			default:
 				fmt.Println("No:", index, fileName, "不是docx文件，跳过处理！")
 			}
@@ -80,8 +98,9 @@ func getDocxInformation(fileName string) string {
 }
 
 func main() {
+	delDocFile := false
 	MkdirTextFile("./TextFile")
-	if !switchFileName() {
+	if !switchFileName(delDocFile) {
 		log.Println("文件列表获取失败或没有查找到doc docx 文档")
 	}
 }
