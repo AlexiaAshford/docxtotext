@@ -2,6 +2,7 @@ package main
 
 import (
 	"baliance.com/gooxml/document"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -10,8 +11,30 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 )
+
+type Config struct {
+	DocToDocx   bool
+	DelDocFile  bool
+	DelDocxFile bool
+}
+type ConfigClass struct {
+	ConfigFile      string
+	FileInformation []byte
+	FileNameList    []string
+	FileStruct      Config
+}
+
+func (is *ConfigClass) SaveConfig() {
+	if err := ioutil.WriteFile("./config.json", is.FileInformation, 0777); err != nil {
+		log.Fatalf("error writing file: %s", err)
+	}
+}
+func (is *ConfigClass) load() {
+	if data, err := ioutil.ReadFile("./config.json"); err != nil {
+		is.FileInformation = data
+	}
+}
 
 func FileNameList() []string {
 	var files []string
@@ -28,46 +51,23 @@ func FileNameList() []string {
 	return nil
 }
 
-func MkdirTextFile(path string) {
-	if _, err := os.Stat(path); err != nil {
-		if err = os.Mkdir(path, 0777); err != nil {
-			log.Fatalf("error creating directory: %s", err)
-		}
-	} else {
-		fmt.Println("TextFile 目录已存在, 不再创建")
-	}
-}
-func CmdPythonSaveImageDpi(filePath string) {
-	if _, err := exec.Command("python", []string{"run.py", filePath}...).Output(); err == nil {
+func CmdPythonSaveDocx() {
+	if _, err := exec.Command("python", []string{"run.py"}...).Output(); err == nil {
 		fmt.Println("doc转换成功")
 	} else {
 		fmt.Println(err)
 	}
-	time.Sleep(1 * time.Second)
 }
 
-func switchFileName(delDocFile bool) bool {
-	if NameList := FileNameList(); NameList != nil || len(NameList) != 0 {
-		for index, file := range FileNameList() {
+func (is *ConfigClass) switchFileName() bool {
+	if NameList := is.FileNameList; NameList != nil || len(NameList) != 0 {
+		for index, file := range is.FileNameList {
 			fileName := filepath.Base(file)
 			switch path.Ext(fileName) {
 			case ".docx":
 				if docxContent := getDocxInformation(fileName); docxContent != "" {
 					saveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
-					if delDocFile {
-						if err := os.Remove(fileName); err != nil {
-							log.Println(err)
-						}
-					}
-				} else {
-					fmt.Println("文件" + fileName + "处理失败")
-				}
-			case ".doc":
-				// 调用python脚本转换doc为docx
-				CmdPythonSaveImageDpi(fileName)
-				if docxContent := getDocxInformation(fileName); docxContent != "" {
-					saveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
-					if delDocFile {
+					if is.FileStruct.DelDocxFile {
 						if err := os.Remove(fileName); err != nil {
 							log.Println(err)
 						}
@@ -110,10 +110,43 @@ func getDocxInformation(fileName string) string {
 	return content
 }
 
+func init() {
+	if _, err := os.Stat("./TextFile"); err != nil {
+		if err = os.Mkdir("./TextFile", 0777); err != nil {
+			log.Fatalf("error creating directory: %s", err)
+		}
+	} else {
+		fmt.Println("TextFile 目录已存在, 不再创建")
+	}
+}
+
+func initConfig() *ConfigClass {
+	Vars := ConfigClass{ConfigFile: "./config.json"}
+	if _, err := os.Stat(Vars.ConfigFile); err != nil {
+		if config, ok := json.MarshalIndent(&Config{}, "", "   "); ok == nil {
+			Vars.FileInformation = config
+			Vars.SaveConfig()
+		} else {
+			log.Fatalf("error marshal config: %s", ok)
+		}
+	} else {
+		if data, err := ioutil.ReadFile("./config.json"); err == nil {
+			Vars.FileInformation = data
+		} else {
+			log.Fatalf("error reading file: %s", err)
+		}
+	}
+	Vars.FileNameList = FileNameList() // 获取当前目录下所有文件名
+	return &Vars
+}
 func main() {
-	delDocFile := false
-	MkdirTextFile("./TextFile")
-	if !switchFileName(delDocFile) {
-		log.Println("文件列表获取失败或没有查找到doc docx 文档")
+	Vars := initConfig()
+	if err := json.Unmarshal(Vars.FileInformation, &Vars.FileStruct); err == nil {
+		if Vars.FileStruct.DocToDocx {
+			CmdPythonSaveDocx() // 调用python脚本转换doc为docx
+		}
+		if !Vars.switchFileName() {
+			log.Println("文件列表获取失败或没有查找到doc docx 文档")
+		}
 	}
 }
