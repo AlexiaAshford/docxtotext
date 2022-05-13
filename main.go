@@ -12,30 +12,7 @@ import (
 	"strings"
 )
 
-func switchFileName(is *config.ConfigClass) bool {
-	if NameList := is.FileNameList; NameList != nil || len(NameList) != 0 {
-		for index, file := range is.FileNameList {
-			fileName := filepath.Base(file)
-			switch path.Ext(fileName) {
-			case ".docx":
-				if docxContent := getDocxInformation(fileName); docxContent != "" {
-					config.SaveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
-					if is.FileStruct.DelDocxFile {
-						if err := os.Remove(fileName); err != nil {
-							log.Println(err)
-						}
-					}
-				} else {
-					fmt.Println("文件" + fileName + "处理失败")
-				}
-			default:
-				fmt.Println("No:", index, fileName, "不是docx文件，跳过处理！")
-			}
-		}
-		return true
-	}
-	return false
-}
+var Vars *config.ConfigClass
 
 func getDocxInformation(fileName string) string {
 	var content string
@@ -54,8 +31,6 @@ func getDocxInformation(fileName string) string {
 	return content
 }
 
-var Vars *config.ConfigClass
-
 func init() {
 	config.MkdirFile("./TextFile")
 	Vars = config.InitConfig()
@@ -73,12 +48,39 @@ func init() {
 	}
 }
 
+func delDocxFile() {
+	for _, fileName := range Vars.DelFileList {
+		if err := os.Remove(fileName); err != nil {
+			log.Println(err)
+		}
+	}
+	fmt.Println("已经删除所有docx文件")
+	Vars.DelFileList = []string{} // 清空删除文件列表
+}
+
 func main() {
 	if Vars.FileStruct.DocToDocx {
 		config.CmdPythonSaveDocx() // 调用python脚本转换doc为docx
 	}
-	if !switchFileName(Vars) {
-		log.Println("文件列表获取失败或没有查找到doc docx 文档")
+	if NameList := Vars.FileNameList; NameList != nil || len(NameList) != 0 {
+		for index, file := range Vars.FileNameList {
+			fileName := filepath.Base(file)
+			switch path.Ext(fileName) {
+			case ".docx":
+				if docxContent := getDocxInformation(fileName); docxContent != "" {
+					config.SaveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
+					Vars.DelFileList = append(Vars.DelFileList, fileName)
+				} else {
+					fmt.Println("文件" + fileName + "处理失败")
+				}
+			default:
+				fmt.Println("No:", index, fileName, "不是docx文件，跳过处理！")
+			}
+		}
+		fmt.Println("文档转换处理完成！")
+		if Vars.FileStruct.DelDocxFile && len(Vars.DelFileList) != 0 {
+			delDocxFile()
+		}
 	}
-
+	log.Println("文件列表获取失败或没有查找到doc docx 文档")
 }

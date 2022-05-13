@@ -18,6 +18,7 @@ type ConfigClass struct {
 	FileInformation []byte
 	FileNameList    []string
 	FileStruct      Config
+	DelFileList     []string
 }
 
 func (is *ConfigClass) SaveConfig() {
