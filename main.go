@@ -2,71 +2,24 @@ package main
 
 import (
 	"baliance.com/gooxml/document"
+	"doc/config"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
 )
 
-type Config struct {
-	DocToDocx   bool
-	DelDocFile  bool
-	DelDocxFile bool
-}
-type ConfigClass struct {
-	ConfigFile      string
-	FileInformation []byte
-	FileNameList    []string
-	FileStruct      Config
-}
-
-func (is *ConfigClass) SaveConfig() {
-	if err := ioutil.WriteFile("./config.json", is.FileInformation, 0777); err != nil {
-		log.Fatalf("error writing file: %s", err)
-	}
-}
-func (is *ConfigClass) load() {
-	if data, err := ioutil.ReadFile("./config.json"); err != nil {
-		is.FileInformation = data
-	}
-}
-
-func FileNameList() []string {
-	var files []string
-	if dir, err := os.Getwd(); err == nil {
-		if ok := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			files = append(files, path)
-			return nil
-		}); ok == nil {
-			return files
-		}
-	} else {
-		fmt.Println(err)
-	}
-	return nil
-}
-
-func CmdPythonSaveDocx() {
-	if _, err := exec.Command("python", []string{"run.py"}...).Output(); err == nil {
-		fmt.Println("doc转换成功")
-	} else {
-		fmt.Println(err)
-	}
-}
-
-func (is *ConfigClass) switchFileName() bool {
+func switchFileName(is *config.ConfigClass) bool {
 	if NameList := is.FileNameList; NameList != nil || len(NameList) != 0 {
 		for index, file := range is.FileNameList {
 			fileName := filepath.Base(file)
 			switch path.Ext(fileName) {
 			case ".docx":
 				if docxContent := getDocxInformation(fileName); docxContent != "" {
-					saveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
+					config.SaveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
 					if is.FileStruct.DelDocxFile {
 						if err := os.Remove(fileName); err != nil {
 							log.Println(err)
@@ -82,15 +35,6 @@ func (is *ConfigClass) switchFileName() bool {
 		return true
 	}
 	return false
-}
-
-func saveFile(fileName, content string) {
-	content = "　　" + strings.Replace(content, "\n　　\n", "\n", -1)
-	if ok := ioutil.WriteFile("TextFile/"+fileName, []byte(content), 0644); ok != nil {
-		log.Fatalf("error writing file: %s", ok)
-	} else {
-		fmt.Println("文件" + fileName + "处理完毕， 已保存在 TextFile 目录下")
-	}
 }
 
 func getDocxInformation(fileName string) string {
@@ -110,43 +54,31 @@ func getDocxInformation(fileName string) string {
 	return content
 }
 
+var Vars *config.ConfigClass
+
 func init() {
-	if _, err := os.Stat("./TextFile"); err != nil {
-		if err = os.Mkdir("./TextFile", 0777); err != nil {
-			log.Fatalf("error creating directory: %s", err)
-		}
-	} else {
-		fmt.Println("TextFile 目录已存在, 不再创建")
+	config.MkdirFile("./TextFile")
+	Vars = config.InitConfig()
+	if err := json.Unmarshal(Vars.FileInformation, &Vars.FileStruct); err != nil {
+		log.Fatalf("error unmarshaling: %s", err)
+	}
+	if Vars.FileStruct.DelDocxFile {
+		fmt.Println("[提醒]已经开启转换后删除旧docx文件选择")
+	}
+	if Vars.FileStruct.DelDocFile {
+		fmt.Println("[提醒]已经开启转换后删除旧doc文件选择")
+	}
+	if Vars.FileStruct.DocToDocx {
+		fmt.Println("[提醒]已经开启doc转换成docx选择")
 	}
 }
 
-func initConfig() *ConfigClass {
-	Vars := ConfigClass{ConfigFile: "./config.json"}
-	if _, err := os.Stat(Vars.ConfigFile); err != nil {
-		if config, ok := json.MarshalIndent(&Config{}, "", "   "); ok == nil {
-			Vars.FileInformation = config
-			Vars.SaveConfig()
-		} else {
-			log.Fatalf("error marshal config: %s", ok)
-		}
-	} else {
-		if data, err := ioutil.ReadFile("./config.json"); err == nil {
-			Vars.FileInformation = data
-		} else {
-			log.Fatalf("error reading file: %s", err)
-		}
-	}
-	Vars.FileNameList = FileNameList() // 获取当前目录下所有文件名
-	return &Vars
-}
 func main() {
-	Vars := initConfig()
-	if err := json.Unmarshal(Vars.FileInformation, &Vars.FileStruct); err == nil {
-		if Vars.FileStruct.DocToDocx {
-			CmdPythonSaveDocx() // 调用python脚本转换doc为docx
-		}
-		if !Vars.switchFileName() {
-			log.Println("文件列表获取失败或没有查找到doc docx 文档")
-		}
+	if Vars.FileStruct.DocToDocx {
+		config.CmdPythonSaveDocx() // 调用python脚本转换doc为docx
 	}
+	if !switchFileName(Vars) {
+		log.Println("文件列表获取失败或没有查找到doc docx 文档")
+	}
+
 }
