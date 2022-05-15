@@ -16,7 +16,7 @@ var Vars *config.ClassConfig
 
 func getDocxInformation(fileName string, index int, ch chan struct{}, wg *sync.WaitGroup) {
 	var content string //doc.Paragraphs() 得到包含文档所有的段落的切片
-	if doc, err := document.Open(fileName); err == nil {
+	if doc, err := document.Open("./DocxFile/" + fileName); err == nil {
 		for _, para := range doc.Paragraphs() {
 			//run为每个段落相同格式的文字组成的片段
 			content += "\n　　"
@@ -25,7 +25,7 @@ func getDocxInformation(fileName string, index int, ch chan struct{}, wg *sync.W
 			}
 		}
 	} else {
-		log.Fatalf("error opening document: %s", err)
+		fmt.Println("fileName", err)
 	}
 	if content != "" {
 		config.SaveFile(fileName, content)
@@ -45,6 +45,7 @@ func init() {
 		log.SetOutput(logFile)
 	}
 	// 设置存储位置
+	config.MkdirFile("./DocxFile")
 	config.MkdirFile("./TextFile")
 	Vars = config.InitConfig()
 	if err := json.Unmarshal(Vars.FileInformation, &Vars.FileStruct); err != nil {
@@ -63,7 +64,7 @@ func init() {
 
 func delDocxFile() {
 	for _, fileName := range Vars.DelFileList {
-		if err := os.Remove(fileName); err != nil {
+		if err := os.Remove("./DocxFile/" + fileName); err != nil {
 			log.Println(err)
 		}
 	}
@@ -74,8 +75,9 @@ func delDocxFile() {
 func main() {
 	ch, wg := make(chan struct{}, 3), sync.WaitGroup{}
 	if Vars.FileStruct.DocToDocx {
-		config.CmdPythonSaveDocx([]string{"run.py"}) // 调用python脚本转换doc为docx
-		Vars.FileNameList = config.FileNameList()    // 重新获取当前目录下所有文件名
+		// 调用python脚本转换doc为docx
+		config.CmdPythonSaveDocx([]string{"run.py", "DocxFile", "TextFile"})
+		Vars.FileNameList = config.FileNameList() // 重新获取当前目录下所有文件名
 	}
 	if NameList := Vars.FileNameList; NameList != nil || len(NameList) != 0 {
 		for index, file := range Vars.FileNameList {

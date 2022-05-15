@@ -5,21 +5,29 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
 
-func FileNameList() []string {
-	var files []string
+func HomeDir() string {
 	if dir, err := os.Getwd(); err == nil {
-		if ok := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			files = append(files, path)
-			return nil
-		}); ok == nil {
-			return files
-		}
+		return dir
 	} else {
 		fmt.Println(err)
+	}
+	return ""
+}
+
+func FileNameList() []string {
+	var files []string
+	if ok := filepath.Walk(path.Join(HomeDir(), "DocxFile"),
+		func(path string, info os.FileInfo, err error) error {
+			files = append(files, path)
+			return nil
+		},
+	); ok == nil {
+		return files
 	}
 	return nil
 }
