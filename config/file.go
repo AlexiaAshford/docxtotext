@@ -25,11 +25,10 @@ func FileNameList() []string {
 }
 
 func SaveFile(fileName, content string) {
-	content = "　　" + strings.Replace(content, "\n　　\n", "\n", -1)
-	if ok := ioutil.WriteFile("TextFile/"+fileName, []byte(content), 0644); ok != nil {
+	NewName := strings.Replace(fileName, ".docx", ".txt", -1)
+	content = strings.Replace(content, "\n　　\n", "\n", -1)
+	if ok := ioutil.WriteFile("TextFile/"+NewName, []byte(content), 0644); ok != nil {
 		log.Fatalf("error writing file: %s", ok)
-	} else {
-		fmt.Println("文件" + fileName + "处理完毕， 已保存在 TextFile 目录下")
 	}
 }
 

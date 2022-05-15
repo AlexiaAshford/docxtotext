@@ -9,30 +9,29 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"sync"
 )
 
 var Vars *config.ClassConfig
 
-func getDocxInformation(fileName string, ch chan struct{}, wg *sync.WaitGroup) {
-	var content string
-	//doc.Paragraphs() 得到包含文档所有的段落的切片
+func getDocxInformation(fileName string, index int, ch chan struct{}, wg *sync.WaitGroup) {
+	var content string //doc.Paragraphs() 得到包含文档所有的段落的切片
 	if doc, err := document.Open(fileName); err == nil {
 		for _, para := range doc.Paragraphs() {
 			//run为每个段落相同格式的文字组成的片段
+			content += "\n　　"
 			for _, run := range para.Runs() {
 				content += run.Text()
 			}
-			content += "\n　　"
 		}
 	} else {
 		log.Fatalf("error opening document: %s", err)
 	}
 	if content != "" {
-		config.SaveFile(strings.Replace(fileName, ".docx", ".txt", -1), content)
+		config.SaveFile(fileName, content)
+		fmt.Println("No:", index, "\t文件", fileName, "处理完成")
 	} else {
-		fmt.Println("文件" + fileName + "为空或者处理失败")
+		fmt.Println("文件" + fileName + "内容为空或者处理失败")
 		Vars.DelFileList = append(Vars.DelFileList, fileName)
 	}
 	wg.Done()
@@ -79,15 +78,15 @@ func main() {
 		Vars.FileNameList = config.FileNameList()    // 重新获取当前目录下所有文件名
 	}
 	if NameList := Vars.FileNameList; NameList != nil || len(NameList) != 0 {
-		for _, file := range Vars.FileNameList {
+		for index, file := range Vars.FileNameList {
 			fileName := filepath.Base(file)
 			switch path.Ext(fileName) {
 			case ".docx":
 				ch <- struct{}{}
 				wg.Add(1)
-				go getDocxInformation(fileName, ch, &wg)
+				go getDocxInformation(fileName, index, ch, &wg)
 			default:
-				fmt.Println("")
+				continue
 				//fmt.Println("No:", index, fileName, "不是docx文件，跳过处理！")
 			}
 		}
