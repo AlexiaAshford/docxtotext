@@ -13,7 +13,7 @@ type Config struct {
 	DelDocxFile bool
 }
 
-type ConfigClass struct {
+type ClassConfig struct {
 	ConfigFile      string
 	FileInformation []byte
 	FileNameList    []string
@@ -21,19 +21,19 @@ type ConfigClass struct {
 	DelFileList     []string
 }
 
-func (is *ConfigClass) SaveConfig() {
+func (is *ClassConfig) SaveConfig() {
 	if err := ioutil.WriteFile("./config.json", is.FileInformation, 0777); err != nil {
 		log.Fatalf("error writing file: %s", err)
 	}
 }
-func (is *ConfigClass) load() {
+func (is *ClassConfig) load() {
 	if data, err := ioutil.ReadFile("./config.json"); err != nil {
 		is.FileInformation = data
 	}
 }
 
-func InitConfig() *ConfigClass {
-	Vars := ConfigClass{ConfigFile: "./config.json"}
+func InitConfig() *ClassConfig {
+	Vars := ClassConfig{ConfigFile: "./config.json"}
 	if _, err := os.Stat(Vars.ConfigFile); err != nil {
 		if configs, ok := json.MarshalIndent(&Config{}, "", "   "); ok == nil {
 			Vars.FileInformation = configs

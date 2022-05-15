@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-var Vars *config.ConfigClass
+var Vars *config.ClassConfig
 
 func getDocxInformation(fileName string) string {
 	var content string
@@ -32,6 +32,12 @@ func getDocxInformation(fileName string) string {
 }
 
 func init() {
+	// 已 只写入文件|没有时创建|文件尾部追加 的形式打开这个文件
+	flag := os.O_WRONLY | os.O_CREATE | os.O_APPEND
+	if logFile, err := os.OpenFile(`./program.log`, flag, 0666); err == nil {
+		log.SetOutput(logFile)
+	}
+	// 设置存储位置
 	config.MkdirFile("./TextFile")
 	Vars = config.InitConfig()
 	if err := json.Unmarshal(Vars.FileInformation, &Vars.FileStruct); err != nil {
@@ -60,7 +66,8 @@ func delDocxFile() {
 
 func main() {
 	if Vars.FileStruct.DocToDocx {
-		config.CmdPythonSaveDocx() // 调用python脚本转换doc为docx
+		config.CmdPythonSaveDocx([]string{"run.py"}) // 调用python脚本转换doc为docx
+		Vars.FileNameList = config.FileNameList()    // 重新获取当前目录下所有文件名
 	}
 	if NameList := Vars.FileNameList; NameList != nil || len(NameList) != 0 {
 		for index, file := range Vars.FileNameList {

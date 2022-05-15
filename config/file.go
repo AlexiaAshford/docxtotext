@@ -38,7 +38,5 @@ func MkdirFile(filepath string) {
 		if err = os.Mkdir(filepath, 0777); err != nil {
 			log.Fatalf("error creating directory: %s", err)
 		}
-	} else {
-		fmt.Println(filepath, " 目录已存在, 不再创建")
 	}
 }
