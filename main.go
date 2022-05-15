@@ -10,11 +10,12 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 var Vars *config.ClassConfig
 
-func getDocxInformation(fileName string) string {
+func getDocxInformation(fileName string, ch chan struct{}, wg *sync.WaitGroup) {
 	var content string
 	//doc.Paragraphs() 得到包含文档所有的段落的切片
 	if doc, err := document.Open(fileName); err == nil {
@@ -28,7 +29,14 @@ func getDocxInformation(fileName string) string {
 	} else {
 		log.Fatalf("error opening document: %s", err)
 	}
-	return content
+	if content != "" {
+		config.SaveFile(strings.Replace(fileName, ".docx", ".txt", -1), content)
+	} else {
+		fmt.Println("文件" + fileName + "为空或者处理失败")
+		Vars.DelFileList = append(Vars.DelFileList, fileName)
+	}
+	wg.Done()
+	<-ch
 }
 
 func init() {
@@ -65,25 +73,25 @@ func delDocxFile() {
 }
 
 func main() {
+	ch, wg := make(chan struct{}, 3), sync.WaitGroup{}
 	if Vars.FileStruct.DocToDocx {
 		config.CmdPythonSaveDocx([]string{"run.py"}) // 调用python脚本转换doc为docx
 		Vars.FileNameList = config.FileNameList()    // 重新获取当前目录下所有文件名
 	}
 	if NameList := Vars.FileNameList; NameList != nil || len(NameList) != 0 {
-		for index, file := range Vars.FileNameList {
+		for _, file := range Vars.FileNameList {
 			fileName := filepath.Base(file)
 			switch path.Ext(fileName) {
 			case ".docx":
-				if docxContent := getDocxInformation(fileName); docxContent != "" {
-					config.SaveFile(strings.Replace(fileName, ".docx", ".txt", -1), docxContent)
-					Vars.DelFileList = append(Vars.DelFileList, fileName)
-				} else {
-					fmt.Println("文件" + fileName + "处理失败")
-				}
+				ch <- struct{}{}
+				wg.Add(1)
+				go getDocxInformation(fileName, ch, &wg)
 			default:
-				fmt.Println("No:", index, fileName, "不是docx文件，跳过处理！")
+				fmt.Println("")
+				//fmt.Println("No:", index, fileName, "不是docx文件，跳过处理！")
 			}
 		}
+		wg.Wait()
 		fmt.Println("文档转换处理完成！")
 		if Vars.FileStruct.DelDocxFile && len(Vars.DelFileList) != 0 {
 			delDocxFile()
