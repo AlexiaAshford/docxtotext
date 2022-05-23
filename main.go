@@ -30,10 +30,10 @@ func getDocxInformation(fileName string, index int, ch chan struct{}, wg *sync.W
 	if content != "" {
 		config.SaveFile(fileName, content, Vars.TextFileName)
 		fmt.Println("No:", index, "\t文件", fileName, "处理完成")
+		Vars.DelFileList = append(Vars.DelFileList, fileName)
 	} else {
 		fmt.Println("文件" + fileName + "内容为空或者处理失败")
 	}
-	Vars.DelFileList = append(Vars.DelFileList, fileName)
 	wg.Done()
 	<-ch
 }
@@ -94,8 +94,8 @@ func main() {
 		}
 		wg.Wait()
 		fmt.Println("文档转换处理完成！")
-		fmt.Println(Vars.DelFileList)
 		if Vars.FileStruct.DelDocxFile && len(Vars.DelFileList) != 0 {
+			fmt.Println("[提醒]开始删除旧docx文件")
 			delDocxFile()
 		}
 	}
