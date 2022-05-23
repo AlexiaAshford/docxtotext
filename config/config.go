@@ -14,7 +14,9 @@ type Config struct {
 }
 
 type ClassConfig struct {
-	ConfigFile      string
+	ConfigFileName  string
+	TextFileName    string
+	DocxFileName    string
 	FileInformation []byte
 	FileNameList    []string
 	FileStruct      Config
@@ -22,19 +24,23 @@ type ClassConfig struct {
 }
 
 func (is *ClassConfig) SaveConfig() {
-	if err := ioutil.WriteFile("./config.json", is.FileInformation, 0777); err != nil {
+	if err := ioutil.WriteFile(is.ConfigFileName, is.FileInformation, 0777); err != nil {
 		log.Fatalf("error writing file: %s", err)
 	}
 }
 func (is *ClassConfig) load() {
-	if data, err := ioutil.ReadFile("./config.json"); err != nil {
+	if data, err := ioutil.ReadFile(is.ConfigFileName); err != nil {
 		is.FileInformation = data
 	}
 }
 
 func InitConfig() *ClassConfig {
-	Vars := ClassConfig{ConfigFile: "./config.json"}
-	if _, err := os.Stat(Vars.ConfigFile); err != nil {
+	Vars := ClassConfig{
+		ConfigFileName: "./config.json",
+		TextFileName:   "./TextFile/",
+		DocxFileName:   "./DocxFile/",
+	}
+	if _, err := os.Stat(Vars.ConfigFileName); err != nil {
 		if configs, ok := json.MarshalIndent(&Config{}, "", "   "); ok == nil {
 			Vars.FileInformation = configs
 			Vars.SaveConfig()
@@ -42,12 +48,12 @@ func InitConfig() *ClassConfig {
 			log.Fatalf("error marshal config: %s", ok)
 		}
 	} else {
-		if data, err := ioutil.ReadFile("./config.json"); err == nil {
+		if data, err := ioutil.ReadFile(Vars.ConfigFileName); err == nil {
 			Vars.FileInformation = data
 		} else {
 			log.Fatalf("error reading file: %s", err)
 		}
 	}
-	Vars.FileNameList = FileNameList() // 获取当前目录下所有文件名
+	Vars.FileNameList = FileNameList(Vars.DocxFileName) // 获取当前目录下所有文件名
 	return &Vars
 }

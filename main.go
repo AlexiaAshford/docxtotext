@@ -16,7 +16,7 @@ var Vars *config.ClassConfig
 
 func getDocxInformation(fileName string, index int, ch chan struct{}, wg *sync.WaitGroup) {
 	var content string //doc.Paragraphs() 得到包含文档所有的段落的切片
-	if doc, err := document.Open("./DocxFile/" + fileName); err == nil {
+	if doc, err := document.Open(Vars.DocxFileName + fileName); err == nil {
 		for _, para := range doc.Paragraphs() {
 			//run为每个段落相同格式的文字组成的片段
 			content += "\n　　"
@@ -28,12 +28,12 @@ func getDocxInformation(fileName string, index int, ch chan struct{}, wg *sync.W
 		fmt.Println("fileName", err)
 	}
 	if content != "" {
-		config.SaveFile(fileName, content)
+		config.SaveFile(fileName, content, Vars.TextFileName)
 		fmt.Println("No:", index, "\t文件", fileName, "处理完成")
 	} else {
 		fmt.Println("文件" + fileName + "内容为空或者处理失败")
-		Vars.DelFileList = append(Vars.DelFileList, fileName)
 	}
+	Vars.DelFileList = append(Vars.DelFileList, fileName)
 	wg.Done()
 	<-ch
 }
@@ -44,10 +44,10 @@ func init() {
 	if logFile, err := os.OpenFile(`./program.log`, flag, 0666); err == nil {
 		log.SetOutput(logFile)
 	}
-	// 设置存储位置
-	config.MkdirFile("./DocxFile")
-	config.MkdirFile("./TextFile")
+	// 设置存储位置、
 	Vars = config.InitConfig()
+	config.MkdirFile(Vars.DocxFileName)
+	config.MkdirFile(Vars.TextFileName)
 	if err := json.Unmarshal(Vars.FileInformation, &Vars.FileStruct); err != nil {
 		log.Fatalf("error unmarshaling: %s", err)
 	}
@@ -64,7 +64,7 @@ func init() {
 
 func delDocxFile() {
 	for _, fileName := range Vars.DelFileList {
-		if err := os.Remove("./DocxFile/" + fileName); err != nil {
+		if err := os.Remove(Vars.DocxFileName + fileName); err != nil {
 			log.Println(err)
 		}
 	}
@@ -76,8 +76,8 @@ func main() {
 	ch, wg := make(chan struct{}, 3), sync.WaitGroup{}
 	if Vars.FileStruct.DocToDocx {
 		// 调用python脚本转换doc为docx
-		config.CmdPythonSaveDocx([]string{"run.py", "DocxFile", "TextFile"})
-		Vars.FileNameList = config.FileNameList() // 重新获取当前目录下所有文件名
+		config.CmdPythonSaveDocx([]string{"run.py", Vars.DocxFileName, Vars.TextFileName})
+		Vars.FileNameList = config.FileNameList(Vars.DocxFileName) // 重新获取当前目录下所有文件名
 	}
 	if NameList := Vars.FileNameList; NameList != nil || len(NameList) != 0 {
 		for index, file := range Vars.FileNameList {
@@ -94,6 +94,7 @@ func main() {
 		}
 		wg.Wait()
 		fmt.Println("文档转换处理完成！")
+		fmt.Println(Vars.DelFileList)
 		if Vars.FileStruct.DelDocxFile && len(Vars.DelFileList) != 0 {
 			delDocxFile()
 		}
