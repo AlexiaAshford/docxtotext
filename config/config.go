@@ -41,7 +41,7 @@ func InitConfig() *ClassConfig {
 		DocxFileName:   "./DocxFile/",
 	}
 	if _, err := os.Stat(Vars.ConfigFileName); err != nil {
-		if configs, ok := json.MarshalIndent(&Config{}, "", "   "); ok == nil {
+		if configs, ok := json.MarshalIndent(&Vars.FileStruct, "", "   "); ok == nil {
 			Vars.FileInformation = configs
 			Vars.SaveConfig()
 		} else {

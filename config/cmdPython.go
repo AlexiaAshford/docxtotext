@@ -2,13 +2,16 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 )
 
 func CmdPythonSaveDocx(arg []string) {
-	if _, err := exec.Command("python", arg...).Output(); err == nil {
-		fmt.Println("doc转换成功")
+	if cmd, err := exec.Command("python", arg...).Output(); err == nil {
+		fmt.Println("doc转换成功：")
+		log.Println(string(cmd))
 	} else {
-		fmt.Println(err)
+		log.Fatal("doc转换失败")
 	}
+
 }

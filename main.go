@@ -39,12 +39,7 @@ func getDocxInformation(fileName string, index int, ch chan struct{}, wg *sync.W
 }
 
 func init() {
-	// 已 只写入文件|没有时创建|文件尾部追加 的形式打开这个文件
-	flag := os.O_WRONLY | os.O_CREATE | os.O_APPEND
-	if logFile, err := os.OpenFile(`./program.log`, flag, 0666); err == nil {
-		log.SetOutput(logFile)
-	}
-	// 设置存储位置、
+	config.InitLogInformation()
 	Vars = config.InitConfig()
 	config.MkdirFile(Vars.DocxFileName)
 	config.MkdirFile(Vars.TextFileName)
@@ -76,10 +71,13 @@ func main() {
 	ch, wg := make(chan struct{}, 3), sync.WaitGroup{}
 	if Vars.FileStruct.DocToDocx {
 		// 调用python脚本转换doc为docx
+		println("=====================开始转换doc为docx=====================")
 		config.CmdPythonSaveDocx([]string{"run.py", Vars.DocxFileName, Vars.TextFileName})
 		Vars.FileNameList = config.FileNameList(Vars.DocxFileName) // 重新获取当前目录下所有文件名
+		println(Vars.FileNameList)
 	}
-	if NameList := Vars.FileNameList; NameList != nil || len(NameList) != 0 {
+
+	if Vars.FileNameList != nil && len(Vars.FileNameList) != 0 {
 		for index, file := range Vars.FileNameList {
 			fileName := filepath.Base(file)
 			switch path.Ext(fileName) {
@@ -98,6 +96,9 @@ func main() {
 			fmt.Println("[提醒]开始删除旧docx文件")
 			delDocxFile()
 		}
+		//os.Exit(0)
 	}
+	fmt.Println("文件列表获取失败或没有查找到doc docx 文档")
 	log.Println("文件列表获取失败或没有查找到doc docx 文档")
+
 }
